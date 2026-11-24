@@ -98,11 +98,23 @@ hr {
 # ============================================================
 
 def section_heading(number, title, description):
-    st.markdown(f"## {number}. {title}")
-    st.markdown(
-        f'<p class="small-note">{description}</p>',
-        unsafe_allow_html=True
-    )
+    """Render a consistently formatted dashboard section heading."""
+
+    number = str(number).strip()
+    title = str(title).strip()
+    description = str(description).strip()
+
+    if not title:
+        raise ValueError("section title cannot be empty")
+
+    heading = f"{number}. {title}" if number else title
+    st.markdown(f"## {heading}")
+
+    if description:
+        st.markdown(
+            f'<p class="small-note">{description}</p>',
+            unsafe_allow_html=True
+        )
 
 
 def display_chart_with_findings(
@@ -177,8 +189,10 @@ def load_crime_data(db_path):
 
         # Add crime category descriptions
         iucr = pd.read_sql_query(
-            'SELECT IUCR, "PRIMARY_TYPE " AS primary_type '
-            'FROM iucr',
+            """
+            SELECT IUCR, PRIMARY_TYPE AS primary_type
+            FROM iucr
+            """,
             conn
         )
 
@@ -384,6 +398,7 @@ if selected_section == "Project Overview":
     total_arrests = int(crime_data["arrest_flag"].sum())
     arrest_rate = safe_percentage(total_arrests, total_records)
     total_categories = crime_data["primary_type"].nunique()
+    
 
     col1, col2, col3, col4 = st.columns(4)
 
@@ -391,35 +406,49 @@ if selected_section == "Project Overview":
     col2.metric("Recorded Arrests", f"{total_arrests:,}")
     col3.metric("Overall Arrest Rate", f"{arrest_rate:.2f}%")
     col4.metric("Crime Categories", total_categories)
+    left_col, right_col = st.columns(2)
+
+    with left_col:
+        st.subheader("Crime Category Distribution")
+
+        category_counts = (
+            crime_data["primary_type"]
+            .value_counts(dropna=False)
+            .reset_index()
+        )
+
+        category_counts.columns = ["Crime Category", "Record Count"]
+
+        st.dataframe(
+            category_counts,
+            use_container_width=True,
+            hide_index=True,
+            height=350
+        )
+
+    with right_col:
+        st.subheader("Project Information")
+
+        st.markdown("### Project Objective")
+        st.write(
+            "To analyze historical Chicago crime data, identify crime "
+            "patterns and trends, examine arrest rates, and generate "
+            "data-driven insights to support better understanding of "
+            "public safety."
+        )
+
+        st.markdown("### Tech Stack")
+        st.markdown("""
+        - **Python** : Data analysis and processing
+        - **Pandas & NumPy** : Data cleaning and manipulation
+        - **SQLite** : Database management and SQL analysis
+        - **Matplotlib & Seaborn** : Data visualization
+        - **Streamlit** : Interactive dashboard
+        - **Jupyter Notebook** : Exploratory analysis
+        """)
 
     st.divider()
 
-    st.subheader("Project Objectives")
-
-    objective_col, scope_col = st.columns(2)
-
-    with objective_col:
-        st.markdown("#### Objectives")
-        st.markdown("""
-        - Inspect and clean historical crime data.
-        - Explore crime category and time distributions.
-        - Examine statistical patterns and outliers.
-        - Integrate data with a relational database.
-        - Present insights through an interactive dashboard.
-        """)
-
-    with scope_col:
-        st.markdown("#### Technology Stack")
-        st.markdown("""
-        - Python and Pandas
-        - NumPy
-        - Matplotlib and Seaborn
-        - SQLite database
-        - SQL queries and views
-        - Streamlit dashboard
-        """)
-
-    st.divider()
 
     st.subheader("Dataset Snapshot")
 
